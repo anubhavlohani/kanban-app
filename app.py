@@ -35,7 +35,7 @@ def register():
     # form_data = request.form.to_dict()
     # form_data['password'] = generate_password_hash(form_data['password'], 'sha256')
     print(request.data)
-    return {'success': True, 'redirect': '/'}
+    return {'success': True}
 
 
 # @app.route('/login', methods=['GET', 'POST'])
