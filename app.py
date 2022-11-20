@@ -31,13 +31,12 @@ def home():
     return render_template('index.html')
 
 
-# @app.route('/register', methods=['GET', 'POST'])
-# def register():
-#     if request.method == 'POST':
-#         form_data = request.form.to_dict()
-#         form_data['password'] = generate_password_hash(form_data['password'], 'sha256')
-
-#     return render_template('register.html')
+@app.route('/registerUser', methods=['POST'])
+def register():
+    # form_data = request.form.to_dict()
+    # form_data['password'] = generate_password_hash(form_data['password'], 'sha256')
+    print(request.data)
+    return {'success': True, 'redirect': '/'}
 
 
 # @app.route('/login', methods=['GET', 'POST'])

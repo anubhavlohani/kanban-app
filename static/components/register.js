@@ -3,7 +3,7 @@ const register = {
   <div class="container">
     <h3 class="mb-3 center">Create Account</h3>
     
-    <form id="app" @submit="checkForm" action="#" method="post">
+    <form id="app" action="#" method="post">
       <div class="mb-3">
         <label for="username" class="form-label">Username</label>
         <input id="username" class="form-control" v-model="username" type="text" name="username">
@@ -24,7 +24,7 @@ const register = {
         </ul>
       </div>
 
-      <button type="submit" class="btn btn-outline-primary">Submit</button>
+      <button @click="registerNewUser" class="btn btn-outline-primary">Submit</button>
     </form>
   </div>
   `,
@@ -49,11 +49,27 @@ const register = {
   },
   
   methods: {
-    checkForm: function (e) {
-      if (this.validUsername && this.validPassword) {
-        return true;
-      }
+    registerNewUser: function(e) {
       e.preventDefault();
+      
+      let processServerResponse = (data) => {
+        if (data.success == true) {
+          alert(`success, redirect to ${data.redirect}`)
+        } else {
+          alert('failed')
+        }
+      }
+      
+      if (this.validUsername && this.validPassword) {
+        let userData = {username: this.username, password: this.password}
+        fetch('http://localhost:8080/registerUser', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(userData),
+        }).then((res) => res.json()).then((data) => processServerResponse(data)).catch((error) => alert(error));
+      }
     }
   },
   
