@@ -54,7 +54,7 @@ const register = {
       
       let processServerResponse = (data) => {
         if (data.success == true) {
-          alert(`success, redirect to ${data.redirect}`)
+          window.location.href = `${data.redirect}`;
         } else {
           alert('failed')
         }
