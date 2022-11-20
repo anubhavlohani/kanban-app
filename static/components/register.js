@@ -54,7 +54,7 @@ const register = {
       
       let processServerResponse = (data) => {
         if (data.success == true) {
-          window.location.href = `${data.redirect}`;
+          this.$router.push('login')
         } else {
           alert('failed')
         }
