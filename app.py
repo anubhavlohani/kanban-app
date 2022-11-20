@@ -30,7 +30,6 @@ class User(db.Model):
 def home():
     return render_template('index.html')
 
-
 @app.route('/registerUser', methods=['POST'])
 def register():
     # form_data = request.form.to_dict()
