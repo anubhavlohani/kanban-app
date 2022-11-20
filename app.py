@@ -28,24 +28,22 @@ class User(db.Model):
 
 @app.route('/', methods=['GET'])
 def home():
-    return render_template('home.html')
+    return render_template('index.html')
 
-
-@app.route('/register', methods=['GET', 'POST'])
+@app.route('/registerUser', methods=['POST'])
 def register():
-    if request.method == 'POST':
-        form_data = request.form.to_dict()
-        form_data['password'] = generate_password_hash(form_data['password'], 'sha256')
+    # form_data = request.form.to_dict()
+    # form_data['password'] = generate_password_hash(form_data['password'], 'sha256')
+    print(request.data)
+    return {'success': True, 'redirect': '/'}
 
-    return render_template('register.html')
 
+# @app.route('/login', methods=['GET', 'POST'])
+# def login():
+#     if request.method == 'POST':
+#         return render_template('home.html')
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        return render_template('home.html')
-
-    return render_template('login.html')
+#     return render_template('login.html')
 
 
 
