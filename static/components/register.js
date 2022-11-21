@@ -5,6 +5,16 @@ const register = {
     
     <form id="app" action="#" method="post">
       <div class="mb-3">
+        <label for="name" class="form-label">Name</label>
+        <input id="name" class="form-control" v-model="name" type="text" name="name">
+        <ul v-if="nameConditions.length">
+          <li v-for="condition in nameConditions" v-bind:class="condition.textType">
+            {{ condition.message }}
+          </li>
+        </ul>
+      </div>
+
+      <div class="mb-3">
         <label for="username" class="form-label">Username</label>
         <input id="username" class="form-control" v-model="username" type="text" name="username">
         <ul v-if="usernameConditions.length">
@@ -31,15 +41,21 @@ const register = {
 
   data() {
     return {
+      name: null,
+      validName: false,
+      nameConditions: [
+        {message: "Cannot be empty", textType: null},
+        {message: "Only alphabets and space allowed", textType: null},
+      ],
       username: null,
       validUsername: false,
-      password: null,
-      validPassword: false,
       usernameConditions: [
         {message: "Can only contain upper and lower case alphabets, numbers and _", textType: null},
         {message: "Cannot start with a number or _", textType: null},
         {message: "At least 5 characters", textType: null}
       ],
+      password: null,
+      validPassword: false,
       passwordConditions: [
         {message: "Contain at least one alphabet", textType: null},
         {message: "Contain at least one number", textType: null},
@@ -60,8 +76,8 @@ const register = {
         }
       }
       
-      if (this.validUsername && this.validPassword) {
-        let userData = {username: this.username, password: this.password}
+      if (this.validName && this.validUsername && this.validPassword) {
+        let userData = {name: this.name, username: this.username, password: this.password}
         fetch('http://localhost:8080/registerUser', {
           method: 'POST',
           headers: {
@@ -74,6 +90,24 @@ const register = {
   },
   
   watch: {
+    name: function() {
+      this.name = this.name.trim()
+      this.validName = true
+      var re = RegExp("^[a-zA-Z ]+$")
+      if (this.name.length == 0) {
+        this.validName = false
+        this.nameConditions[0].textType = 'error-condition'
+      } else {
+        this.nameConditions[0].textType = 'valid-condition'
+      }
+
+      if (re.test(this.name)) {
+        this.nameConditions[1].textType = 'valid-condition'
+      } else {
+        this.validName = false
+        this.nameConditions[1].textType = 'error-condition'
+      }
+    },
     username: function () {
       this.validUsername = true
       var re = RegExp("[^\\w]")
