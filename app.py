@@ -5,7 +5,7 @@ import jwt
 import uuid
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, make_response, jsonify
 from flask_sqlalchemy import SQLAlchemy
 
 
@@ -49,10 +49,23 @@ def register():
     return {'success': True}
 
 
-# @app.route('/login', methods=['POST'])
-# def login():
-#     data = json.loads(request.data)
-#     return ""
+@app.route('/login', methods=['POST'])
+def login():
+    auth = request.authorization
+
+    if not auth or not auth.username or not auth.password:
+        return make_response(jsonify('Could not verify. Missing username and/or password'), 401)
+
+    user = User.query.filter_by(username=auth.username).first()
+    if not user:
+        return make_response(jsonify('Could not verify. This username does not exist'), 401)
+
+    if check_password_hash(user.password, auth.password):
+        token_expiration = datetime.datetime.now() + datetime.timedelta(hours=1)
+        token = jwt.encode({'public_id': user.public_id, 'exp': token_expiration}, app.config['SECRET_KEY'])
+        return {'token': token}
+    
+    return make_response(jsonify('Could not verify. Wrong password'), 401)
 
 
 

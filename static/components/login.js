@@ -28,7 +28,7 @@ const login = {
       <label for="check1" class="form-check-label">Confirm</label>
     </div>
     
-    <button type="submit" class="btn btn-outline-primary">Submit</button>
+    <button @click="userLogin" class="btn btn-outline-primary">Submit</button>
   </form>
   `,
 
@@ -42,6 +42,30 @@ const login = {
       passwordErrors: [],
     }
   },
+
+  methods: {
+    userLogin: function(e) {
+      e.preventDefault();
+
+      let processServerResponse = (data) => {
+        if (data.token) {
+          console.log(data.token);
+        } else {
+          alert(data);
+        }
+      }
+
+      if (this.validUsername && this.validPassword) {
+        fetch('http://localhost:8080/login', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Basic ' + btoa(`${this.username}:${this.password}`),
+          }
+        }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
+      }
+    }
+  },
+
   watch: {
     username: function () {
       this.validUsername = true
