@@ -22,11 +22,6 @@ const login = {
         </li>
       </ul>
     </div>
-
-    <div class="mb-3">
-      <input type="checkbox" class="form-check-input" id="id_check1" required>
-      <label for="check1" class="form-check-label">Confirm</label>
-    </div>
     
     <button @click="userLogin" class="btn btn-outline-primary">Submit</button>
   </form>
