@@ -1,13 +1,18 @@
 import os
-from werkzeug.security import generate_password_hash
+import datetime
+import json
+import jwt
+import uuid
+from werkzeug.security import generate_password_hash, check_password_hash
 
-from flask import Flask, render_template, redirect, request
+from flask import Flask, render_template, request
 from flask_sqlalchemy import SQLAlchemy
 
 
 curr_dir = os.path.abspath(os.path.dirname(__name__))
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'mySuperDuperSecretKey'
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(curr_dir, 'database.sqlite3')
 db = SQLAlchemy()
 db.init_app(app)
@@ -19,10 +24,10 @@ app.app_context().push()
 class User(db.Model):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    username = db.Column(db.String, unique=True, nullable=False)
+    public_id = db.Column(db.String(50), unique=True, nullable=False)
     name = db.Column(db.String, unique=False, nullable=False)
+    username = db.Column(db.String, unique=True, nullable=False)
     password = db.Column(db.String(255), unique=False, nullable=False)
-    fn_uniquifier = db.Column(db.String(255), unique=True, nullable=False)
 
 
 
@@ -32,18 +37,22 @@ def home():
 
 @app.route('/registerUser', methods=['POST'])
 def register():
-    # form_data = request.form.to_dict()
-    # form_data['password'] = generate_password_hash(form_data['password'], 'sha256')
-    print(request.data)
+    data = json.loads(request.data)
+
+    hashed_password = generate_password_hash(data['password'], 'sha256')
+    public_id = str(uuid.uuid4())
+
+    new_user = User(public_id=public_id, name=data['name'], username=data['username'], password=hashed_password)
+    db.session.add(new_user)
+    db.session.commit()
+
     return {'success': True}
 
 
-# @app.route('/login', methods=['GET', 'POST'])
+# @app.route('/login', methods=['POST'])
 # def login():
-#     if request.method == 'POST':
-#         return render_template('home.html')
-
-#     return render_template('login.html')
+#     data = json.loads(request.data)
+#     return ""
 
 
 
