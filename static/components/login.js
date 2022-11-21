@@ -16,6 +16,11 @@ const login = {
     <div class="mb-3">
       <label for="password" class="form-label">Password</label>
       <input id="password" class="form-control" v-model="password" type="password" name="password">
+      <ul v-if="passwordErrors.length">
+        <li v-for="error in passwordErrors" class="error-condition">
+          {{ error }}
+        </li>
+      </ul>
     </div>
 
     <div class="mb-3">
@@ -34,7 +39,7 @@ const login = {
       usernameErrors: [],
       password: null,
       validPassword: false,
-      passwordErros: [],
+      passwordErrors: [],
     }
   },
   watch: {
@@ -50,6 +55,22 @@ const login = {
         if (this.username.length < 5 || this.username[0] == '_' || re.test(this.username)) {
           this.validUsername = false
           this.usernameErrors.push('username invalid')
+        }
+      }
+    },
+    password: function() {
+      this.validPassword = true
+      this.passwordErrors = []
+
+      if (this.password.length == 0) {
+        this.validPassword = false
+        this.passwordErrors.push('password field cannot be empty')
+      } else {
+        var re1 = RegExp("[a-zA-Z]")
+        var re2 = RegExp("[0-9]")
+        if (this.password.length < 8 || !re1.test(this.password) || !re2.test(this.password)) {
+          this.validPassword = false
+          this.passwordErrors.push('password invalid')
         }
       }
     }
