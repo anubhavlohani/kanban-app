@@ -40,7 +40,7 @@ const login = {
   },
 
   methods: {
-    userLogin: function(e) {
+    userLogin: function (e) {
       e.preventDefault();
 
       let processServerResponse = (data) => {
@@ -79,7 +79,7 @@ const login = {
         }
       }
     },
-    password: function() {
+    password: function () {
       this.validPassword = true
       this.passwordErrors = []
 
