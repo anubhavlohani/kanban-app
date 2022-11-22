@@ -1,7 +1,7 @@
 const board = {
   template: `
     <div class='container'>
-      <div>{{ name }}</div>
+      <div class='center'> Welcome {{ name }}</div>
     </div>
   `,
   
