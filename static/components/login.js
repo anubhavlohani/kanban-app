@@ -1,30 +1,31 @@
 const login = {
   template: `
-    <form class="container" method="post">
+  <div class='container'>
     <h3 class="mb-3 center">Login</h3>
-    
-    <div class="mb-3">
-      <label for="username" class="form-label">Username</label>
-      <input id="username" class="form-control" v-model="username" type="text" name="username">
-      <ul v-if="usernameErrors.length">
-        <li v-for="error in usernameErrors" class="error-condition">
-          {{ error }}
-        </li>
-      </ul>
-    </div>
+    <form class="container" method="post">
+      <div class="mb-3">
+        <label for="username" class="form-label">Username</label>
+        <input id="username" class="form-control" v-model="username" type="text" name="username">
+        <ul v-if="usernameErrors.length">
+          <li v-for="error in usernameErrors" class="error-condition">
+            {{ error }}
+          </li>
+        </ul>
+      </div>
 
-    <div class="mb-3">
-      <label for="password" class="form-label">Password</label>
-      <input id="password" class="form-control" v-model="password" type="password" name="password">
-      <ul v-if="passwordErrors.length">
-        <li v-for="error in passwordErrors" class="error-condition">
-          {{ error }}
-        </li>
-      </ul>
-    </div>
-    
-    <button @click="userLogin" class="btn btn-outline-primary">Submit</button>
-  </form>
+      <div class="mb-3">
+        <label for="password" class="form-label">Password</label>
+        <input id="password" class="form-control" v-model="password" type="password" name="password">
+        <ul v-if="passwordErrors.length">
+          <li v-for="error in passwordErrors" class="error-condition">
+            {{ error }}
+          </li>
+        </ul>
+      </div>
+      
+      <button @click="userLogin" class="btn btn-outline-primary">Submit</button>
+    </form>
+  </div>
   `,
 
   data() {
@@ -44,9 +45,8 @@ const login = {
 
       let processServerResponse = (data) => {
         if (data.token) {
-          console.log(data.token);
           localStorage.setItem('token', data.token)
-          this.$router.push('/')
+          this.$router.push('/board')
         } else {
           alert(data);
         }
