@@ -45,6 +45,8 @@ const login = {
       let processServerResponse = (data) => {
         if (data.token) {
           console.log(data.token);
+          localStorage.setItem('token', data.token)
+          this.$router.push('/')
         } else {
           alert(data);
         }
