@@ -18,12 +18,19 @@ const board = {
 
         <button @click="createNewList" class="btn btn-outline-primary">Submit</button>
       </form>
+
+      <div class="row row-cols-3">
+        <div v-for="list in lists" class="col">
+          {{ list.title }}
+        </div>
+      </div>
     </div>
   `,
 
   data () {
     return {
       name: null,
+      lists: null,
       title: null,
       validTitle: false,
       titleErrors: [],
@@ -33,8 +40,9 @@ const board = {
 
   mounted: function () {
     let processServerResponse = (data) => {
-      if (data.name) {
+      if (data.name && data.lists) {
         this.name = data.name
+        this.lists = data.lists
       } else {
         alert(data)
       }

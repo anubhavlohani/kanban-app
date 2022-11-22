@@ -36,6 +36,13 @@ class List(db.Model):
     title = db.Column(db.String(20), unique=False, nullable=False)
     owner = db.Column(db.String, db.ForeignKey("user.username"), unique=False, nullable=False)
 
+    @property
+    def serialized(self):
+        return {
+            'title': self.title,
+            'owner': self.owner
+        }
+
 
 
 def token_required(func):
@@ -96,8 +103,10 @@ def login():
 @app.route('/getLists', methods=['GET'])
 @token_required
 def get_lists(current_user):
-    user_lists = List.query.filter_by(owner=current_user.username).all()
-    return {'name': user_lists}
+    available_lists = List.query.filter_by(owner=current_user.username).all()
+    user_lists = [list.serialized for list in available_lists]
+    
+    return {'name': current_user.name, "lists": user_lists}
 
 
 @app.route('/createList', methods=['POST'])
