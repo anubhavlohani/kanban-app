@@ -3,7 +3,7 @@ const board = {
     <div class='container'>
       <div class='center'> Welcome {{ name }}</div>
       
-      <button @click="viewForm=true" class="btn btn-primary" name="create_button"> + </button>
+      <button @click="viewForm=!viewForm" class="btn btn-outline-primary btn-sm"> + </button>
 
       <form v-if="viewForm" id="app" action="#" method="post">
         <div class='mb-3'>
@@ -15,13 +15,19 @@ const board = {
             </li>
           </ul>
         </div>
-
         <button @click="createNewList" class="btn btn-outline-primary">Submit</button>
       </form>
 
+      <form v-if="viewPopup" id="app" action="#" method="delete">
+        Are you sure?
+        <button @click="deleteList" class="btn btn-outline-primary btn-sm">Yes</button>
+        <button @click="viewPopup=!viewPopup; selectedListId=null" class="btn btn-outline-secondary btn-sm">No</button>
+      </form>
+
       <div class="row row-cols-3">
-        <div v-for="list in lists" class="col">
+        <div v-for="(list, index) in lists" class="col">
           {{ list.title }}
+          <button @click="viewPopup=!viewPopup; selectedListId=list.public_id" class="btn btn-outline-danger btn-sm"> - </button>
         </div>
       </div>
     </div>
@@ -31,10 +37,15 @@ const board = {
     return {
       name: null,
       lists: null,
+
       title: null,
       validTitle: false,
       titleErrors: [],
+      
       viewForm: false,
+      viewPopup: false,
+
+      selectedListId: null,
     }
   },
 
@@ -75,7 +86,6 @@ const board = {
   methods: {
     createNewList: function (e) {
       e.preventDefault();
-      
       let processServerResponse = (data) => {
         if (data.success == true) {
           this.$router.go()
@@ -83,7 +93,6 @@ const board = {
           alert('failed')
         }
       }
-
       if (this.validTitle) {
         let newListData = {'title': this.title.trim()}
         let token = localStorage.getItem('token')
@@ -93,6 +102,29 @@ const board = {
             'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify(newListData)
+        }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
+      }
+    },
+
+    deleteList: function(e) {
+      e.preventDefault();
+      let processServerResponse = (data) => {
+        if (data.success == true) {
+          this.$router.go()
+        } else {
+          alert('failed')
+        }
+      }
+      if (this.selectedListId) {
+        let deleteListData = {'public_id': this.selectedListId}
+        let token = localStorage.getItem('token')
+        fetch('http://localhost:8080/deleteList', {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(deleteListData)
         }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
       }
     }

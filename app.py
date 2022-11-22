@@ -33,12 +33,14 @@ class User(db.Model):
 class List(db.Model):
     __tablename__ = 'list'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    public_id = db.Column(db.String(50), unique=True, nullable=False)
     title = db.Column(db.String(20), unique=False, nullable=False)
     owner = db.Column(db.String, db.ForeignKey("user.username"), unique=False, nullable=False)
 
     @property
     def serialized(self):
         return {
+            'public_id': self.public_id,
             'title': self.title,
             'owner': self.owner
         }
@@ -113,8 +115,18 @@ def get_lists(current_user):
 @token_required
 def create_list(current_user):
     data = json.loads(request.data)
-    new_list = List(title=data['title'], owner=current_user.username)
+    public_id = str(uuid.uuid4())
+    new_list = List(public_id=public_id, title=data['title'], owner=current_user.username)
     db.session.add(new_list)
+    db.session.commit()
+    return {'success': True}
+
+@app.route('/deleteList', methods=['DELETE'])
+@token_required
+def delete_list(current_user):
+    data = json.loads(request.data)
+    list_to_delete = List.query.filter_by(public_id=data['public_id']).first()
+    db.session.delete(list_to_delete)
     db.session.commit()
     return {'success': True}
 
