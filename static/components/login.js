@@ -42,7 +42,6 @@ const login = {
   methods: {
     userLogin: function (e) {
       e.preventDefault();
-
       let processServerResponse = (data) => {
         if (data.token) {
           localStorage.setItem('token', data.token)
@@ -51,7 +50,6 @@ const login = {
           alert(data);
         }
       }
-
       if (this.validUsername && this.validPassword) {
         fetch('http://localhost:8080/login', {
           method: 'POST',

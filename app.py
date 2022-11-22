@@ -30,10 +30,24 @@ class User(db.Model):
     username = db.Column(db.String, unique=True, nullable=False)
     password = db.Column(db.String(255), unique=False, nullable=False)
 
+class List(db.Model):
+    __tablename__ = 'list'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    public_id = db.Column(db.String(50), unique=True, nullable=False)
+    title = db.Column(db.String(20), unique=False, nullable=False)
+    owner = db.Column(db.String, db.ForeignKey("user.username"), unique=False, nullable=False)
+
+    @property
+    def serialized(self):
+        return {
+            'public_id': self.public_id,
+            'title': self.title,
+            'owner': self.owner
+        }
+
 
 
 def token_required(func):
-
     @wraps(func)
     def verify_token(*args, **kwargs):
         token = request.headers['Authorization'].split()[1]
@@ -46,8 +60,9 @@ def token_required(func):
             current_user = User.query.filter_by(public_id=public_id).first()
             return func(current_user, *args, **kwargs)
 
-        except jwt.ExpiredSignatureError as err:
+        except jwt.ExpiredSignatureError:
             return make_response(jsonify('Session expired, please login again.'), 401)
+
     return verify_token
 
 
@@ -56,17 +71,15 @@ def token_required(func):
 def home():
     return render_template('index.html')
 
+
 @app.route('/registerUser', methods=['POST'])
 def register():
     data = json.loads(request.data)
-
     hashed_password = generate_password_hash(data['password'], 'sha256')
     public_id = str(uuid.uuid4())
-
     new_user = User(public_id=public_id, name=data['name'], username=data['username'], password=hashed_password)
     db.session.add(new_user)
     db.session.commit()
-
     return {'success': True}
 
 
@@ -92,7 +105,30 @@ def login():
 @app.route('/getLists', methods=['GET'])
 @token_required
 def get_lists(current_user):
-    return {'name': current_user.name}
+    available_lists = List.query.filter_by(owner=current_user.username).all()
+    user_lists = [list.serialized for list in available_lists]
+    
+    return {'name': current_user.name, "lists": user_lists}
+
+
+@app.route('/createList', methods=['POST'])
+@token_required
+def create_list(current_user):
+    data = json.loads(request.data)
+    public_id = str(uuid.uuid4())
+    new_list = List(public_id=public_id, title=data['title'], owner=current_user.username)
+    db.session.add(new_list)
+    db.session.commit()
+    return {'success': True}
+
+@app.route('/deleteList', methods=['DELETE'])
+@token_required
+def delete_list(current_user):
+    data = json.loads(request.data)
+    list_to_delete = List.query.filter_by(public_id=data['public_id']).first()
+    db.session.delete(list_to_delete)
+    db.session.commit()
+    return {'success': True}
 
 
 if __name__ == '__main__':

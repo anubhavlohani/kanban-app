@@ -67,7 +67,6 @@ const register = {
   methods: {
     registerNewUser: function(e) {
       e.preventDefault();
-      
       let processServerResponse = (data) => {
         if (data.success == true) {
           this.$router.push('login')
@@ -75,7 +74,6 @@ const register = {
           alert('failed')
         }
       }
-      
       if (this.validName && this.validUsername && this.validPassword) {
         let userData = {name: this.name, username: this.username, password: this.password}
         fetch('http://localhost:8080/registerUser', {
