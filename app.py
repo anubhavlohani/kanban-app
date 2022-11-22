@@ -62,17 +62,15 @@ def token_required(func):
 def home():
     return render_template('index.html')
 
+
 @app.route('/registerUser', methods=['POST'])
 def register():
     data = json.loads(request.data)
-
     hashed_password = generate_password_hash(data['password'], 'sha256')
     public_id = str(uuid.uuid4())
-
     new_user = User(public_id=public_id, name=data['name'], username=data['username'], password=hashed_password)
     db.session.add(new_user)
     db.session.commit()
-
     return {'success': True}
 
 
@@ -100,6 +98,16 @@ def login():
 def get_lists(current_user):
     user_lists = List.query.filter_by(owner=current_user.username).all()
     return {'name': user_lists}
+
+
+@app.route('/createList', methods=['POST'])
+@token_required
+def create_list(current_user):
+    data = json.loads(request.data)
+    new_list = List(title=data['title'], owner=current_user.username)
+    db.session.add(new_list)
+    db.session.commit()
+    return {'success': True}
 
 
 if __name__ == '__main__':
