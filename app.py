@@ -3,6 +3,7 @@ import datetime
 import json
 import jwt
 import uuid
+from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from flask import Flask, render_template, request, make_response, jsonify
@@ -28,6 +29,26 @@ class User(db.Model):
     name = db.Column(db.String, unique=False, nullable=False)
     username = db.Column(db.String, unique=True, nullable=False)
     password = db.Column(db.String(255), unique=False, nullable=False)
+
+
+
+def token_required(func):
+
+    @wraps(func)
+    def verify_token(*args, **kwargs):
+        token = request.headers['Authorization'].split()[1]
+        if not token:
+            return make_response(jsonify('Invalid credentials'), 401)
+
+        try:
+            token_data = jwt.decode(token, app.config['SECRET_KEY'], 'HS256')
+            public_id = token_data['public_id']
+            current_user = User.query.filter_by(public_id=public_id).first()
+            return func(current_user, *args, **kwargs)
+
+        except jwt.ExpiredSignatureError as err:
+            return make_response(jsonify('Session expired, please login again.'), 401)
+    return verify_token
 
 
 
@@ -61,12 +82,17 @@ def login():
         return make_response(jsonify('Could not verify. This username does not exist'), 401)
 
     if check_password_hash(user.password, auth.password):
-        token_expiration = datetime.datetime.now() + datetime.timedelta(hours=1)
+        token_expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=24)
         token = jwt.encode({'public_id': user.public_id, 'exp': token_expiration}, app.config['SECRET_KEY'])
         return {'token': token}
     
     return make_response(jsonify('Could not verify. Wrong password'), 401)
 
+
+@app.route('/getLists', methods=['GET'])
+@token_required
+def get_lists(current_user):
+    return {'name': current_user.name}
 
 
 if __name__ == '__main__':
