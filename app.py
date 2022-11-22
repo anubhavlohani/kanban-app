@@ -30,10 +30,15 @@ class User(db.Model):
     username = db.Column(db.String, unique=True, nullable=False)
     password = db.Column(db.String(255), unique=False, nullable=False)
 
+class List(db.Model):
+    __tablename__ = 'list'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    title = db.Column(db.String(20), unique=False, nullable=False)
+    owner = db.Column(db.String, db.ForeignKey("user.username"), unique=False, nullable=False)
+
 
 
 def token_required(func):
-
     @wraps(func)
     def verify_token(*args, **kwargs):
         token = request.headers['Authorization'].split()[1]
@@ -46,8 +51,9 @@ def token_required(func):
             current_user = User.query.filter_by(public_id=public_id).first()
             return func(current_user, *args, **kwargs)
 
-        except jwt.ExpiredSignatureError as err:
+        except jwt.ExpiredSignatureError:
             return make_response(jsonify('Session expired, please login again.'), 401)
+
     return verify_token
 
 
@@ -92,7 +98,8 @@ def login():
 @app.route('/getLists', methods=['GET'])
 @token_required
 def get_lists(current_user):
-    return {'name': current_user.name}
+    user_lists = List.query.filter_by(owner=current_user.username).all()
+    return {'name': user_lists}
 
 
 if __name__ == '__main__':
