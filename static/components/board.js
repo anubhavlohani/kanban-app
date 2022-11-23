@@ -3,14 +3,14 @@ const board = {
     <div class='container'>
       <div class='center'> Welcome {{ name }}</div>
       
-      <button @click="viewForm=!viewForm" class="btn btn-outline-primary btn-sm"> + </button>
-
-      <form v-if="viewForm" id="app" action="#" method="post">
+      <!-- Create List -->
+      <button @click="createListForm=!createListForm" class="btn btn-outline-primary btn-sm"> + </button>
+      <form v-if="createListForm" id="app" action="#" method="post">
         <div class='mb-3'>
-          <label for="title" class="form-label">Title</label>
-          <input id="title" class="form-control" v-model="title" type="text" name="title">
-          <ul v-if="titleErrors.length">
-            <li v-for="error in titleErrors" class="error-condition">
+          <label for="listTitle" class="form-label">Title</label>
+          <input id="listTitle" class="form-control" v-model="listTitle" type="text" name="listTitle">
+          <ul v-if="listTitleErrors.length">
+            <li v-for="error in listTitleErrors" class="error-condition">
               {{ error }}
             </li>
           </ul>
@@ -18,16 +18,41 @@ const board = {
         <button @click="createNewList" class="btn btn-outline-primary">Submit</button>
       </form>
 
-      <form v-if="viewPopup" id="app" action="#" method="delete">
-        Are you sure?
-        <button @click="deleteList" class="btn btn-outline-primary btn-sm">Yes</button>
-        <button @click="viewPopup=!viewPopup; selectedListId=null" class="btn btn-outline-secondary btn-sm">No</button>
-      </form>
-
+      <!-- Lists View -->
       <div class="row row-cols-3">
-        <div v-for="(list, index) in lists" class="col">
-          {{ list.title }}
-          <button @click="viewPopup=!viewPopup; selectedListId=list.public_id" class="btn btn-outline-danger btn-sm"> - </button>
+        <div v-for="list in lists" class="col">
+          <h3>{{ list.title }}</h3>
+          <button @click="createCardForm=!createCardForm; selectedListId=list.public_id" class="btn btn-outline-success btn-sm"> + </button>
+          <button @click="listDeletePopup=!listDeletePopup; selectedListId=list.public_id" class="btn btn-outline-danger btn-sm"> - </button>
+
+          <!-- Delete List -->
+          <form v-if="listDeletePopup && selectedListId == list.public_id" id="app" action="#" method="delete">
+            Are you sure?
+            <button @click="deleteList" class="btn btn-outline-primary btn-sm">Yes</button>
+            <button @click="listDeletePopup=!listDeletePopup; selectedListId=null" class="btn btn-outline-secondary btn-sm">No</button>
+          </form>
+
+          <!-- Create Card -->
+          <form v-if="createCardForm && selectedListId == list.public_id" id="app" action="#" method="post">
+            <label for="cardTitle" class="form-label">Title</label>
+            <input id="cardTitle" class="form-control" v-model="cardTitle" type="text" name="cardTitle">
+            <ul v-if="cardTitleErrors.length">
+              <li v-for="error in cardTitleErrors" class="error-condition">
+                {{ error }}
+              </li>
+            </ul>
+            <label for="cardContent" class="form-label">Content</label>
+            <input id="cardContent" class="form-control" v-model="cardContent" type="text" name="cardContent">
+            <button @click="createNewCard($event, list.public_id)" class="btn btn-outline-primary">Submit</button>
+          </form>
+
+          <!-- Cards View -->
+          <div v-for="card in list.cards">
+            <div class="card-body">
+              <h5 class="card-title">{{ card.title }}</h5>
+              <p class="card-text">{{ card.content }}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -38,12 +63,18 @@ const board = {
       name: null,
       lists: null,
 
-      title: null,
-      validTitle: false,
-      titleErrors: [],
-      
-      viewForm: false,
-      viewPopup: false,
+      listTitle: null,
+      validListTitle: false,
+      listTitleErrors: [],
+      createListForm: false,
+      listDeletePopup: false,
+
+      cardTitle: null,
+      cardContent: null,
+      validCardTitle: false,
+      cardTitleErrors: [],
+      createCardForm: false,
+      cardDeletePopup: false,
 
       selectedListId: null,
     }
@@ -56,6 +87,7 @@ const board = {
         this.lists = data.lists
       } else {
         alert(data)
+        this.$router.push('/login')
       }
     }
 
@@ -69,16 +101,29 @@ const board = {
   },
 
   watch: {
-    title: function () {
-      this.validTitle = true
-      this.titleErrors = []
+    listTitle: function () {
+      this.validListTitle = true
+      this.listTitleErrors = []
 
-      if (this.title.trim().length == 0) {
-        this.validTitle = false
-        this.titleErrors.push('Title cannot be empty')
-      } else if (this.title.trim().length > 20) {
-        this.validTitle = false
-        this.titleErrors.push('Title is too long')
+      if (this.listTitle.trim().length == 0) {
+        this.validListTitle = false
+        this.listTitleErrors.push('Title cannot be empty')
+      } else if (this.listTitle.trim().length > 20) {
+        this.validListTitle = false
+        this.listTitleErrors.push('Title is too long')
+      }
+    },
+
+    cardTitle: function () {
+      this.validCardTitle = true
+      this.cardTitleErrors = []
+
+      if (this.cardTitle.trim().length == 0) {
+        this.validCardTitle = false
+        this.cardTitleErrors.push('Title cannot be empty')
+      } else if (this.cardTitle.trim().length > 20) {
+        this.validCardTitle = false
+        this.cardTitleErrors.push('Title is too long')
       }
     }
   },
@@ -90,11 +135,12 @@ const board = {
         if (data.success == true) {
           this.$router.go()
         } else {
-          alert('failed')
+          alert(data)
+          this.$router.push('/login')
         }
       }
-      if (this.validTitle) {
-        let newListData = {'title': this.title.trim()}
+      if (this.validListTitle) {
+        let newListData = {'listTitle': this.listTitle.trim()}
         let token = localStorage.getItem('token')
         fetch('http://localhost:8080/createList', {
           method: 'POST',
@@ -112,7 +158,8 @@ const board = {
         if (data.success == true) {
           this.$router.go()
         } else {
-          alert('failed')
+          alert(data)
+          this.$router.push('/login')
         }
       }
       if (this.selectedListId) {
@@ -125,6 +172,33 @@ const board = {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(deleteListData)
+        }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
+      }
+    },
+
+    createNewCard: function(e, listPublicId) {
+      e.preventDefault();
+      let processServerResponse = (data) => {
+        if (data.success == true) {
+          this.$router.go()
+        } else {
+          alert(data)
+          this.$router.push('/login')
+        }
+      }
+      if (this.validCardTitle) {
+        let newCardData = {
+          'cardTitle': this.cardTitle.trim(),
+          'cardContent': this.cardContent?this.cardContent.trim():"",
+          'listPublicId': listPublicId
+        }
+        let token = localStorage.getItem('token')
+        fetch('http://localhost:8080/createCard', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(newCardData)
         }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
       }
     }

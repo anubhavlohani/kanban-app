@@ -37,12 +37,34 @@ class List(db.Model):
     title = db.Column(db.String(20), unique=False, nullable=False)
     owner = db.Column(db.String, db.ForeignKey("user.username"), unique=False, nullable=False)
 
+    def _list_cards(self):
+        cards = Card.query.filter_by(list=self.public_id).all()
+        cards = [card.serialized for card in cards]
+        return cards
+
     @property
     def serialized(self):
         return {
             'public_id': self.public_id,
             'title': self.title,
-            'owner': self.owner
+            'owner': self.owner,
+            'cards': self._list_cards(),
+        }
+
+class Card(db.Model):
+    __tablename__ = 'card'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    public_id = db.Column(db.String(50), unique=True, nullable=False)
+    title = db.Column(db.String(20), unique=False, nullable=False)
+    content = db.Column(db.String, unique=False, nullable=True)
+    list = db.Column(db.String, db.ForeignKey("list.public_id"), unique=False, nullable=False)
+
+    @property
+    def serialized(self):
+        return {
+            'public_id': self.public_id,
+            'title': self.title,
+            'content': self.content,
         }
 
 
@@ -116,7 +138,7 @@ def get_lists(current_user):
 def create_list(current_user):
     data = json.loads(request.data)
     public_id = str(uuid.uuid4())
-    new_list = List(public_id=public_id, title=data['title'], owner=current_user.username)
+    new_list = List(public_id=public_id, title=data['listTitle'], owner=current_user.username)
     db.session.add(new_list)
     db.session.commit()
     return {'success': True}
@@ -126,9 +148,30 @@ def create_list(current_user):
 def delete_list(current_user):
     data = json.loads(request.data)
     list_to_delete = List.query.filter_by(public_id=data['public_id']).first()
+    list_cards = Card.query.filter_by(list=data['public_id']).all()
     db.session.delete(list_to_delete)
+    try:        
+        for card in list_cards:
+            db.session.delete(card)
+    except Exception as err:
+        print(err)
     db.session.commit()
     return {'success': True}
+
+
+@app.route('/createCard', methods=['POST'])
+@token_required
+def create_card(current_user):
+    data = json.loads(request.data)
+    card_public_id = str(uuid.uuid4())
+    new_card = Card(public_id=card_public_id, title=data['cardTitle'], content=data['cardContent'], list=data['listPublicId'])
+    db.session.add(new_card)
+    db.session.commit()
+    return {'success': True}
+
+
+
+
 
 
 if __name__ == '__main__':
