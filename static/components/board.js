@@ -45,9 +45,9 @@ const board = {
             </ul>
             <label for="cardContent" class="form-label">Content</label>
             <input id="cardContent" class="form-control" v-model="cardContent" type="text">
-            <label for="cardCreationDatetime" class="form-label">Content</label>
-            <input id="cardCreationDatetime" class="form-control" v-model="cardCreationDatetime" type="datetime-local">
-            <p v-if="cardCreationDatetime && !validCardCreationDatetime" class="error-condition">Need to set a valid time</p>
+            <label for="cardDeadline" class="form-label">Content</label>
+            <input id="cardDeadline" class="form-control" v-model="cardDeadline" type="datetime-local">
+            <p v-if="cardDeadline && !validCardDeadline" class="error-condition">Need to set a valid time</p>
             <button @click="createNewCard($event, list.public_id)" class="btn btn-outline-primary">Submit</button>
           </form>
 
@@ -79,7 +79,7 @@ const board = {
                   <button @click="cardUnderEdit=card" class="btn btn-outline-primary btn-sm"> ? </button>
                   <button @click="cardDeletePopup=!cardDeletePopup; cardUnderDeletion=card" class="btn btn-outline-danger btn-sm"> - </button>
                 </h5>
-                <h6><em>{{ card.creationDatetime.split('T')[1] }} {{ card.creationDatetime.split('T')[0] }}</em></h6>
+                <h6><em>{{ card.deadline.split('T')[1] }} {{ card.deadline.split('T')[0] }}</em></h6>
 
                 <!-- Card Delete -->
                 <form v-if="cardDeletePopup && cardUnderDeletion.public_id == card.public_id" id="app" action="#" method="delete">
@@ -115,8 +115,8 @@ const board = {
       
       cardContent: null,
       
-      cardCreationDatetime: null,
-      validCardCreationDatetime: false,
+      cardDeadline: null,
+      validCardDeadline: false,
       
       createCardForm: false,
       cardDeletePopup: false,
@@ -172,12 +172,12 @@ const board = {
       }
     },
 
-    cardCreationDatetime: function () {
-      this.validCardCreationDatetime = true
-      let parsedDate = Date.parse(this.cardCreationDatetime)
+    cardDeadline: function () {
+      this.validCardDeadline = true
+      let parsedDate = Date.parse(this.cardDeadline)
       
-      if (!this.cardCreationDatetime || parsedDate <= Date.now()) {
-        this.validCardCreationDatetime = false
+      if (!this.cardDeadline || parsedDate <= Date.now()) {
+        this.validCardDeadline = false
       }
     }
   },
@@ -240,11 +240,11 @@ const board = {
           this.$router.push('/login')
         }
       }
-      if (this.validCardTitle) {
+      if (this.validCardTitle && this.validCardDeadline) {
         let newupdatedCardData = {
           'cardTitle': this.cardTitle.trim(),
           'cardContent': this.cardContent?this.cardContent.trim():"",
-          'cardCreationDatetime': this.cardCreationDatetime,
+          'cardDeadline': this.cardDeadline,
           'listPublicId': listPublicId
         }
         let token = localStorage.getItem('token')
@@ -297,7 +297,6 @@ const board = {
           'public_id': this.cardUnderEdit.public_id,
           'newTitle': this.cardUnderEdit.title,
           'newContent': this.cardUnderEdit.content,
-          'completionDatetime': this.cardUnderEdit.completionDatetime,
           'newCompleted': this.cardUnderEdit.completed,
           'newList': this.cardUnderEdit.list
         }
@@ -316,8 +315,7 @@ const board = {
     completedCard: function(e, card) {
       e.preventDefault();
       this.cardUnderEdit = card
-      this.cardUnderEdit.completionDatetime = new Date().toISOString().slice(0, -8)
-      this.cardUnderEdit.completed = 1
+      this.cardUnderEdit.completed = new Date().toISOString().slice(0, -8)
       this.editCard(e);
     },
 
