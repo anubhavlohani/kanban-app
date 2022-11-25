@@ -23,7 +23,7 @@ const board = {
         <div v-for="list in lists" class="col">
           <h3>
             {{ list.title }}
-            <button @click="createCardForm=!createCardForm; selectedListId=list.public_id" class="btn btn-outline-success btn"> + </button>
+            <button @click="createCardForm=!createCardForm; selectedListId=list.public_id" class="btn btn-outline-primary btn"> + </button>
             <button @click="listDeletePopup=!listDeletePopup; selectedListId=list.public_id" class="btn btn-outline-danger btn"> - </button>
           </h3>
 
@@ -45,14 +45,17 @@ const board = {
             </ul>
             <label for="cardContent" class="form-label">Content</label>
             <input id="cardContent" class="form-control" v-model="cardContent" type="text">
+            <label for="cardCreationDatetime" class="form-label">Content</label>
+            <input id="cardCreationDatetime" class="form-control" v-model="cardCreationDatetime" type="datetime-local">
+            <p v-if="cardCreationDatetime && !validCardCreationDatetime" class="error-condition">Need to set a valid time</p>
             <button @click="createNewCard($event, list.public_id)" class="btn btn-outline-primary">Submit</button>
           </form>
 
           <!-- Cards View -->
           <div v-for="card in list.cards">
-            <div class="card-body">
+            <div class="card-body" :class="cardType(card)">
               <form v-if="cardUnderEdit && cardUnderEdit.public_id == card.public_id" id="app" action="#" method="post">
-                <button @click="cardUnderEdit=null" class="btn btn-outline-success btn-sm"> ? </button>
+                <button @click="cardUnderEdit=null" class="btn btn-outline-primary btn-sm"> ? </button>
                 <button @click="cardDeletePopup=!cardDeletePopup; cardUnderDeletion=card" class="btn btn-outline-danger btn-sm"> - </button>
                 <input class="form-control" v-model="cardUnderEdit.title" type="text">
                 <input class="form-control" v-model="cardUnderEdit.content" type="text">
@@ -72,9 +75,11 @@ const board = {
               <div v-else>
                 <h5 class="card-title">
                   {{ card.title }}
-                  <button @click="cardUnderEdit=card" class="btn btn-outline-success btn-sm"> ? </button>
+                  <button v-if="!card.completed" @click="completedCard($event, card)" class="btn btn-outline-success btn-sm"> ✓ </button>
+                  <button @click="cardUnderEdit=card" class="btn btn-outline-primary btn-sm"> ? </button>
                   <button @click="cardDeletePopup=!cardDeletePopup; cardUnderDeletion=card" class="btn btn-outline-danger btn-sm"> - </button>
                 </h5>
+                <h6><em>{{ card.creationDatetime.split('T')[1] }} {{ card.creationDatetime.split('T')[0] }}</em></h6>
 
                 <!-- Card Delete -->
                 <form v-if="cardDeletePopup && cardUnderDeletion.public_id == card.public_id" id="app" action="#" method="delete">
@@ -105,9 +110,14 @@ const board = {
       selectedListId: null,
 
       cardTitle: null,
-      cardContent: null,
       validCardTitle: false,
       cardTitleErrors: [],
+      
+      cardContent: null,
+      
+      cardCreationDatetime: null,
+      validCardCreationDatetime: false,
+      
       createCardForm: false,
       cardDeletePopup: false,
       cardUnderDeletion: null,
@@ -159,6 +169,15 @@ const board = {
       } else if (this.cardTitle.trim().length > 20) {
         this.validCardTitle = false
         this.cardTitleErrors.push('Title is too long')
+      }
+    },
+
+    cardCreationDatetime: function () {
+      this.validCardCreationDatetime = true
+      let parsedDate = Date.parse(this.cardCreationDatetime)
+      
+      if (!this.cardCreationDatetime || parsedDate <= Date.now()) {
+        this.validCardCreationDatetime = false
       }
     }
   },
@@ -225,6 +244,7 @@ const board = {
         let newupdatedCardData = {
           'cardTitle': this.cardTitle.trim(),
           'cardContent': this.cardContent?this.cardContent.trim():"",
+          'cardCreationDatetime': this.cardCreationDatetime,
           'listPublicId': listPublicId
         }
         let token = localStorage.getItem('token')
@@ -277,6 +297,8 @@ const board = {
           'public_id': this.cardUnderEdit.public_id,
           'newTitle': this.cardUnderEdit.title,
           'newContent': this.cardUnderEdit.content,
+          'completionDatetime': this.cardUnderEdit.completionDatetime,
+          'newCompleted': this.cardUnderEdit.completed,
           'newList': this.cardUnderEdit.list
         }
         let token = localStorage.getItem('token')
@@ -289,6 +311,18 @@ const board = {
           body: JSON.stringify(updatedCardData)
         }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
       }
+    },
+
+    completedCard: function(e, card) {
+      e.preventDefault();
+      this.cardUnderEdit = card
+      this.cardUnderEdit.completionDatetime = new Date().toISOString().slice(0, -8)
+      this.cardUnderEdit.completed = 1
+      this.editCard(e);
+    },
+
+    cardType(card) {
+      return card.completed ? 'completed-card' : '';
     }
   }
 }
