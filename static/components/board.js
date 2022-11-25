@@ -4,7 +4,7 @@ const board = {
       <div class='center'> Welcome {{ name }}</div>
       
       <!-- Create List -->
-      <button @click="createListForm=!createListForm" class="btn btn-outline-primary btn-sm"> + </button>
+      <button @click="createListForm=!createListForm" class="btn btn-outline-primary btn"> + </button>
       <form v-if="createListForm" id="app" action="#" method="post">
         <div class='mb-3'>
           <label for="listTitle" class="form-label">Title</label>
@@ -21,9 +21,11 @@ const board = {
       <!-- Lists View -->
       <div class="row row-cols-3">
         <div v-for="list in lists" class="col">
-          <h3>{{ list.title }}</h3>
-          <button @click="createCardForm=!createCardForm; selectedListId=list.public_id" class="btn btn-outline-success btn-sm"> + </button>
-          <button @click="listDeletePopup=!listDeletePopup; selectedListId=list.public_id" class="btn btn-outline-danger btn-sm"> - </button>
+          <h3>
+            {{ list.title }}
+            <button @click="createCardForm=!createCardForm; selectedListId=list.public_id" class="btn btn-outline-success btn"> + </button>
+            <button @click="listDeletePopup=!listDeletePopup; selectedListId=list.public_id" class="btn btn-outline-danger btn"> - </button>
+          </h3>
 
           <!-- Delete List -->
           <form v-if="listDeletePopup && selectedListId == list.public_id" id="app" action="#" method="delete">
@@ -49,7 +51,19 @@ const board = {
           <!-- Cards View -->
           <div v-for="card in list.cards">
             <div class="card-body">
-              <h5 class="card-title">{{ card.title }}</h5>
+              <h5 class="card-title">
+                {{ card.title }}
+                <button @click="createCardForm=!createCardForm; selectedListId=list.public_id" class="btn btn-outline-success btn-sm"> + </button>
+                <button @click="cardDeletePopup=!cardDeletePopup; selectedCardId=card.public_id" class="btn btn-outline-danger btn-sm"> - </button>
+              </h5>
+
+              <!-- Card Delete -->
+              <form v-if="cardDeletePopup && selectedCardId == card.public_id" id="app" action="#" method="delete">
+                Are you sure?
+                <button @click="deleteCard" class="btn btn-outline-primary btn-sm">Yes</button>
+                <button @click="cardDeletePopup=!cardDeletePopup; selectedCardId=null" class="btn btn-outline-secondary btn-sm">No</button>
+              </form>
+
               <p class="card-text">{{ card.content }}</p>
             </div>
           </div>
@@ -68,6 +82,7 @@ const board = {
       listTitleErrors: [],
       createListForm: false,
       listDeletePopup: false,
+      selectedListId: null,
 
       cardTitle: null,
       cardContent: null,
@@ -75,8 +90,7 @@ const board = {
       cardTitleErrors: [],
       createCardForm: false,
       cardDeletePopup: false,
-
-      selectedListId: null,
+      selectedCardId: null,
     }
   },
 
@@ -199,6 +213,30 @@ const board = {
             'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify(newCardData)
+        }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
+      }
+    },
+
+    deleteCard: function(e) {
+      e.preventDefault();
+      let processServerResponse = (data) => {
+        if (data.success == true) {
+          this.$router.go()
+        } else {
+          alert(data)
+          this.$router.push('/login')
+        }
+      }
+      if (this.selectedCardId) {
+        let deleteCardData = {'public_id': this.selectedCardId}
+        let token = localStorage.getItem('token')
+        fetch('http://localhost:8080/deleteCard', {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(deleteCardData)
         }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
       }
     }
