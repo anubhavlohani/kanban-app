@@ -57,6 +57,8 @@ class Card(db.Model):
     public_id = db.Column(db.String(50), unique=True, nullable=False)
     title = db.Column(db.String(20), unique=False, nullable=False)
     content = db.Column(db.String, unique=False, nullable=True)
+    deadline = db.Column(db.String, unique=False, nullable=False)
+    completed = db.Column(db.String, unique=False, nullable=False)
     list = db.Column(db.String, db.ForeignKey("list.public_id"), unique=False, nullable=False)
 
     @property
@@ -65,6 +67,8 @@ class Card(db.Model):
             'public_id': self.public_id,
             'title': self.title,
             'content': self.content,
+            'deadline': self.deadline,
+            'completed': self.completed,
             'list': self.list,
         }
 
@@ -165,7 +169,14 @@ def delete_list(current_user):
 def create_card(current_user):
     data = json.loads(request.data)
     card_public_id = str(uuid.uuid4())
-    new_card = Card(public_id=card_public_id, title=data['cardTitle'], content=data['cardContent'], list=data['listPublicId'])
+    new_card = Card(
+        public_id=card_public_id,
+        title=data['cardTitle'],
+        content=data['cardContent'],
+        deadline=data['cardDeadline'],
+        completed='',
+        list=data['listPublicId']
+    )
     db.session.add(new_card)
     db.session.commit()
     return {'success': True}
@@ -186,6 +197,7 @@ def update_card(current_user):
     card_to_update = Card.query.filter_by(public_id=data['public_id']).first()
     card_to_update.title = data['newTitle']
     card_to_update.content = data['newContent']
+    card_to_update.completed = data['newCompleted']
     card_to_update.list = data['newList']
     db.session.commit()
     return {'success': True}
