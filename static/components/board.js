@@ -8,7 +8,7 @@ const board = {
       <form v-if="createListForm" id="app" action="#" method="post">
         <div class='mb-3'>
           <label for="listTitle" class="form-label">Title</label>
-          <input id="listTitle" class="form-control" v-model="listTitle" type="text" name="listTitle">
+          <input id="listTitle" class="form-control" v-model="listTitle" type="text">
           <ul v-if="listTitleErrors.length">
             <li v-for="error in listTitleErrors" class="error-condition">
               {{ error }}
@@ -37,34 +37,44 @@ const board = {
           <!-- Create Card -->
           <form v-if="createCardForm && selectedListId == list.public_id" id="app" action="#" method="post">
             <label for="cardTitle" class="form-label">Title</label>
-            <input id="cardTitle" class="form-control" v-model="cardTitle" type="text" name="cardTitle">
+            <input id="cardTitle" class="form-control" v-model="cardTitle" type="text">
             <ul v-if="cardTitleErrors.length">
               <li v-for="error in cardTitleErrors" class="error-condition">
                 {{ error }}
               </li>
             </ul>
             <label for="cardContent" class="form-label">Content</label>
-            <input id="cardContent" class="form-control" v-model="cardContent" type="text" name="cardContent">
+            <input id="cardContent" class="form-control" v-model="cardContent" type="text">
             <button @click="createNewCard($event, list.public_id)" class="btn btn-outline-primary">Submit</button>
           </form>
 
           <!-- Cards View -->
           <div v-for="card in list.cards">
             <div class="card-body">
-              <h5 class="card-title">
-                {{ card.title }}
-                <button @click="createCardForm=!createCardForm; selectedListId=list.public_id" class="btn btn-outline-success btn-sm"> + </button>
-                <button @click="cardDeletePopup=!cardDeletePopup; selectedCardId=card.public_id" class="btn btn-outline-danger btn-sm"> - </button>
-              </h5>
-
-              <!-- Card Delete -->
-              <form v-if="cardDeletePopup && selectedCardId == card.public_id" id="app" action="#" method="delete">
-                Are you sure?
-                <button @click="deleteCard" class="btn btn-outline-primary btn-sm">Yes</button>
-                <button @click="cardDeletePopup=!cardDeletePopup; selectedCardId=null" class="btn btn-outline-secondary btn-sm">No</button>
+              <form v-if="cardUnderEdit && cardUnderEdit.public_id == card.public_id" id="app" action="#" method="post">
+                <button @click="cardUnderEdit=null" class="btn btn-outline-success btn-sm"> ? </button>
+                <button @click="cardDeletePopup=!cardDeletePopup; cardUnderDeletion=card" class="btn btn-outline-danger btn-sm"> - </button>
+                <input class="form-control" v-model="cardUnderEdit.title" type="text">
+                <input class="form-control" v-model="cardUnderEdit.content" type="text">
+                <button @click="editCard" class="btn btn-outline-primary">Submit</button>
               </form>
 
-              <p class="card-text">{{ card.content }}</p>
+              <div v-else>
+                <h5 class="card-title">
+                  {{ card.title }}
+                  <button @click="cardUnderEdit=card" class="btn btn-outline-success btn-sm"> ? </button>
+                  <button @click="cardDeletePopup=!cardDeletePopup; cardUnderDeletion=card" class="btn btn-outline-danger btn-sm"> - </button>
+                </h5>
+
+                <!-- Card Delete -->
+                <form v-if="cardDeletePopup && cardUnderDeletion.public_id == card.public_id" id="app" action="#" method="delete">
+                  Are you sure?
+                  <button @click="deleteCard" class="btn btn-outline-primary btn-sm">Yes</button>
+                  <button @click="cardDeletePopup=!cardDeletePopup; cardUnderDeletion.public_id=null" class="btn btn-outline-secondary btn-sm">No</button>
+                </form>
+
+                <p class="card-text">{{ card.content }}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -90,7 +100,8 @@ const board = {
       cardTitleErrors: [],
       createCardForm: false,
       cardDeletePopup: false,
-      selectedCardId: null,
+      cardUnderDeletion: null,
+      cardUnderEdit: null,
     }
   },
 
@@ -201,7 +212,7 @@ const board = {
         }
       }
       if (this.validCardTitle) {
-        let newCardData = {
+        let newupdatedCardData = {
           'cardTitle': this.cardTitle.trim(),
           'cardContent': this.cardContent?this.cardContent.trim():"",
           'listPublicId': listPublicId
@@ -212,7 +223,7 @@ const board = {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify(newCardData)
+          body: JSON.stringify(newupdatedCardData)
         }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
       }
     },
@@ -227,8 +238,8 @@ const board = {
           this.$router.push('/login')
         }
       }
-      if (this.selectedCardId) {
-        let deleteCardData = {'public_id': this.selectedCardId}
+      if (this.cardUnderDeletion) {
+        let deleteupdatedCardData = {'public_id': this.cardUnderDeletion.public_id}
         let token = localStorage.getItem('token')
         fetch('http://localhost:8080/deleteCard', {
           method: 'DELETE',
@@ -236,7 +247,35 @@ const board = {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(deleteCardData)
+          body: JSON.stringify(deleteupdatedCardData)
+        }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
+      }
+    },
+
+    editCard: function(e) {
+      e.preventDefault();
+      let processServerResponse = (data) => {
+        if (data.success == true) {
+          this.$router.go()
+        } else {
+          alert(data)
+          this.$router.push('/login')
+        }
+      }
+      if (this.cardUnderEdit) {
+        let updatedCardData = {
+          'public_id': this.cardUnderEdit.public_id,
+          'newTitle': this.cardUnderEdit.title,
+          'newContent': this.cardUnderEdit.content,
+        }
+        let token = localStorage.getItem('token')
+        fetch('http://localhost:8080/updateCard', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedCardData)
         }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
       }
     }

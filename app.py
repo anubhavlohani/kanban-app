@@ -178,6 +178,15 @@ def delete_card(current_user):
     db.session.commit()
     return {'success': True}
 
+@app.route('/updateCard', methods=['POST'])
+@token_required
+def update_card(current_user):
+    data = json.loads(request.data)
+    card_to_update = Card.query.filter_by(public_id=data['public_id']).first()
+    card_to_update.title = data['newTitle']
+    card_to_update.content = data['newContent']
+    db.session.commit()
+    return {'success': True}
 
 
 
