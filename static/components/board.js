@@ -56,6 +56,16 @@ const board = {
                 <button @click="cardDeletePopup=!cardDeletePopup; cardUnderDeletion=card" class="btn btn-outline-danger btn-sm"> - </button>
                 <input class="form-control" v-model="cardUnderEdit.title" type="text">
                 <input class="form-control" v-model="cardUnderEdit.content" type="text">
+                <div class="dropdown">
+                  <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Belongs to:
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li v-for="list in lists">
+                      <a @click="cardUnderEdit.list=list.public_id" class="dropdown-item">{{ list.title }}</a>
+                    </li>
+                  </ul>
+                </div>
                 <button @click="editCard" class="btn btn-outline-primary">Submit</button>
               </form>
 
@@ -267,6 +277,7 @@ const board = {
           'public_id': this.cardUnderEdit.public_id,
           'newTitle': this.cardUnderEdit.title,
           'newContent': this.cardUnderEdit.content,
+          'newList': this.cardUnderEdit.list
         }
         let token = localStorage.getItem('token')
         fetch('http://localhost:8080/updateCard', {
