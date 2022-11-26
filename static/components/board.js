@@ -315,7 +315,7 @@ const board = {
     completedCard: function(e, card) {
       e.preventDefault();
       this.cardUnderEdit = card
-      this.cardUnderEdit.completed = new Date().toISOString().slice(0, -8)
+      this.cardUnderEdit.completed = new Date().toLocaleString().slice(0, -3)
       this.editCard(e);
     },
 
