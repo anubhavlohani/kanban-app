@@ -91,7 +91,7 @@ def token_required(func):
             return make_response(jsonify('Session expired, please login again.'), 401)
 
     return verify_token
-
+    
 
 
 @app.route('/', methods=['GET'])
@@ -169,11 +169,14 @@ def delete_list(current_user):
 def create_card(current_user):
     data = json.loads(request.data)
     card_public_id = str(uuid.uuid4())
+    card_deadline = data['cardDeadline']
+    card_deadline = datetime.datetime.strptime(card_deadline, '%Y-%m-%dT%H:%M')
+    card_deadline = card_deadline.strftime('%d/%m/%Y, %H:%M')
     new_card = Card(
         public_id=card_public_id,
         title=data['cardTitle'],
         content=data['cardContent'],
-        deadline=data['cardDeadline'],
+        deadline=card_deadline,
         completed='',
         list=data['listPublicId']
     )
@@ -201,6 +204,30 @@ def update_card(current_user):
     card_to_update.list = data['newList']
     db.session.commit()
     return {'success': True}
+
+
+@app.route('/getSummary', methods=['GET'])
+@token_required
+def get_summary(current_user):
+    user_lists = List.query.filter_by(owner=current_user.username).all()
+    user_lists = [list.serialized for list in user_lists]
+
+    for i, list in enumerate(user_lists):
+        completed_cards = 0
+        completed_before_deadline = 0
+        for card in list['cards']:
+            if card['completed']:
+                completed_cards += 1
+                deadline = datetime.datetime.strptime(card['deadline'], "%d/%m/%Y, %H:%M")
+                completion = datetime.datetime.strptime(card['completed'], "%d/%m/%Y, %H:%M")
+                if completion <= deadline:
+                    completed_before_deadline += 1
+        user_lists[i]['totalCards'] = len(list['cards'])
+        user_lists[i]['completedCards'] = completed_cards
+        user_lists[i]['beforeDeadline'] = completed_before_deadline
+        user_lists[i]['afterDeadline'] = completed_cards - completed_before_deadline
+        user_lists[i]['remainingCards'] = len(list['cards']) - completed_cards
+    return {'name': current_user.name, "lists": user_lists}
 
 
 
