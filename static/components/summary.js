@@ -30,6 +30,7 @@ const summary = {
 
         <canvas ref="statusChart"></canvas>
         <canvas ref="completionChart"></canvas>
+        <canvas ref="trendChart"></canvas>
       </div>
   `,
 
@@ -156,6 +157,50 @@ const summary = {
                 beginAtZero: true
               }
             }]
+          }
+        }
+      });
+
+      const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      var timeData = Array(12).fill(0)
+      for (let i = 0; i < this.lists.length; i++) {
+        const list = this.lists[i];
+        for (let j = 0; j < list.cards.length; j++) {
+          const card = list.cards[j];
+          if (card.completed) {
+            let completionMonth = card.completed.split('/')[1] - 1
+            timeData[completionMonth] += 1
+          }
+        }
+      }
+      const currentMonth = new Date().getMonth()
+      timeData = timeData.slice(currentMonth+1).concat(timeData.slice(0, currentMonth+1))
+      var monthLabels = months.slice(currentMonth+1).concat(months.slice(0, currentMonth+1))
+      var trendChart = this.$refs.trendChart;
+      var ctx = trendChart.getContext("2d")
+      var chart3 = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: monthLabels,
+          datasets: [{
+            label: '# of completed tasks',
+            data: timeData,
+            fill: false,
+            borderColor: 'rgb(68, 187, 68)',
+            backgroundColor: 'rgb(0, 128, 0)',
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            title: {
+              display: true,
+              text: 'Chart.js Line Chart'
+            }
           }
         }
       });
