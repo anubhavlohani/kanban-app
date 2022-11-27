@@ -89,10 +89,9 @@ const register = {
   
   watch: {
     name: function() {
-      this.name = this.name.trim()
       this.validName = true
       var re = RegExp("^[a-zA-Z ]+$")
-      if (this.name.length == 0) {
+      if (this.name.trim().length == 0) {
         this.validName = false
         this.nameConditions[0].textType = 'error-condition'
       } else {
