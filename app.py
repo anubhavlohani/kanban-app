@@ -255,13 +255,18 @@ def get_summary(current_user):
     return {'name': current_user.name, "lists": user_lists}
 
 
+@app.route('/getUsername', methods=['GET'])
+@token_required
+def get_username(current_user):
+    return {'username': current_user.username}
+
 @app.route('/exportLists', methods=['GET'])
 @token_required
 def export_lists(current_user):
     available_lists = List.query.filter_by(owner=current_user.username).all()
     user_lists = [list.serialized for list in available_lists]
     export_list_csv.apply_async((current_user.username, user_lists))
-    return "OK", 200
+    return {'success': True}
 
 
 
