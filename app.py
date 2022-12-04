@@ -8,16 +8,27 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from flask import Flask, render_template, request, make_response, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from flask_caching import Cache
 
 
 curr_dir = os.path.abspath(os.path.dirname(__name__))
+config = {
+    "SECRET_KEY": "mySuperDuperSecretKey",
+    "SQLALCHEMY_DATABASE_URI": "sqlite:///" + os.path.join(curr_dir, 'database.sqlite3'),
+    "CACHE_TYPE": "RedisCache",
+    "CACHE_KEY_PREFIX": "kb_cache:/",
+    "CACHE_REDIS_HOST": "localhost",
+    "CACHE_REDIS_PORT": 6379,
+}
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'mySuperDuperSecretKey'
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(curr_dir, 'database.sqlite3')
+app.config.from_mapping(config)
+cache = Cache(app)
 db = SQLAlchemy()
 db.init_app(app)
 app.app_context().push()
+with app.app_context():
+    cache.clear()
 
 
 
@@ -95,11 +106,13 @@ def token_required(func):
 
 
 @app.route('/', methods=['GET'])
+@cache.cached(timeout=3600, key_prefix='home')
 def home():
     return render_template('index.html')
 
 
 @app.route('/registerUser', methods=['POST'])
+@cache.cached(timeout=3600, key_prefix='register')
 def register():
     data = json.loads(request.data)
     hashed_password = generate_password_hash(data['password'], 'sha256')
@@ -111,6 +124,7 @@ def register():
 
 
 @app.route('/login', methods=['POST'])
+@cache.cached(timeout=3600, key_prefix='login')
 def login():
     auth = request.authorization
 
