@@ -1,10 +1,13 @@
 const board = {
   template: `
     <div class='container'>
-      <div class='center'> Welcome {{ name }}</div>
+      <h1 class="display-6"> Welcome {{ name }}</h1>
       
       <!-- Create List -->
-      <button @click="createListForm=!createListForm" class="btn btn-outline-primary btn"> + </button>
+      <h3>
+        Create new list
+        <button @click="createListForm=!createListForm" class="btn btn-outline-primary btn"> + </button>
+      </h3>
       <form v-if="createListForm" id="app" action="#" method="post">
         <div class='mb-3'>
           <label for="listTitle" class="form-label">Title</label>
@@ -21,21 +24,30 @@ const board = {
       <!-- Lists View -->
       <div class="row row-cols-3">
         <div v-for="list in lists" class="col">
-          <h3>
-            {{ list.title }}
-            <button @click="createCardForm=!createCardForm; selectedListId=list.public_id" class="btn btn-outline-primary btn"> + </button>
-            <button @click="listDeletePopup=!listDeletePopup; selectedListId=list.public_id" class="btn btn-outline-danger btn"> - </button>
-          </h3>
+          
+          <!-- List Edit -->
+          <form v-if="listUnderEdit && listUnderEdit.public_id == list.public_id"id="app" action="#" method="post">
+            <button @click="listUnderEdit=null" class="btn btn-outline-dark btn-sm"> ? </button>
+            <input class="form-control" v-model="listUnderEdit.title" type="text">
+            <button @click="editList" class="btn btn-outline-primary">Submit</button>
+          </form>
+
+          <div v-else>
+            <h3>{{ list.title }}</h3>
+            <button @click="createCardForm=!createCardForm; listUnderDeletion=list.public_id" class="btn btn-outline-primary"> + </button>
+            <button @click="listUnderEdit=list" class="btn btn-outline-dark"> ? </button>
+            <button @click="listDeletePopup=!listDeletePopup; listUnderDeletion=list.public_id" class="btn btn-outline-danger"> - </button>
+          </div>
 
           <!-- Delete List -->
-          <form v-if="listDeletePopup && selectedListId == list.public_id" id="app" action="#" method="delete">
+          <form v-if="listDeletePopup && listUnderDeletion == list.public_id" id="app" action="#" method="delete">
             Are you sure?
             <button @click="deleteList" class="btn btn-outline-primary btn-sm">Yes</button>
-            <button @click="listDeletePopup=!listDeletePopup; selectedListId=null" class="btn btn-outline-secondary btn-sm">No</button>
+            <button @click="listDeletePopup=!listDeletePopup; listUnderDeletion=null" class="btn btn-outline-secondary btn-sm">No</button>
           </form>
 
           <!-- Create Card -->
-          <form v-if="createCardForm && selectedListId == list.public_id" id="app" action="#" method="post">
+          <form v-if="createCardForm && listUnderDeletion == list.public_id" id="app" action="#" method="post">
             <label for="cardTitle" class="form-label">Title</label>
             <input id="cardTitle" class="form-control" v-model="cardTitle" type="text">
             <ul v-if="cardTitleErrors.length">
@@ -54,9 +66,10 @@ const board = {
           <!-- Cards View -->
           <div v-for="card in list.cards">
             <div class="card-body" :class="cardType(card)">
+              
+              <!-- Card Edit -->
               <form v-if="cardUnderEdit && cardUnderEdit.public_id == card.public_id" id="app" action="#" method="post">
-                <button @click="cardUnderEdit=null" class="btn btn-outline-primary btn-sm"> ? </button>
-                <button @click="cardDeletePopup=!cardDeletePopup; cardUnderDeletion=card" class="btn btn-outline-danger btn-sm"> - </button>
+                <button @click="cardUnderEdit=null" class="btn btn-outline-dark btn-sm"> ? </button>
                 <input class="form-control" v-model="cardUnderEdit.title" type="text">
                 <input class="form-control" v-model="cardUnderEdit.content" type="text">
                 <div class="dropdown">
@@ -76,7 +89,7 @@ const board = {
                 <h5 class="card-title">
                   {{ card.title }}
                   <button v-if="!card.completed" @click="completedCard($event, card)" class="btn btn-outline-success btn-sm"> ✓ </button>
-                  <button @click="cardUnderEdit=card" class="btn btn-outline-primary btn-sm"> ? </button>
+                  <button @click="cardUnderEdit=card" class="btn btn-outline-dark btn-sm"> ? </button>
                   <button @click="cardDeletePopup=!cardDeletePopup; cardUnderDeletion=card" class="btn btn-outline-danger btn-sm"> - </button>
                 </h5>
                 <h6><em>{{ card.deadline.split('T')[1] }} {{ card.deadline.split('T')[0] }}</em></h6>
@@ -105,9 +118,11 @@ const board = {
       listTitle: null,
       validListTitle: false,
       listTitleErrors: [],
+      
       createListForm: false,
       listDeletePopup: false,
-      selectedListId: null,
+      listUnderDeletion: null,
+      listUnderEdit: null,
 
       cardTitle: null,
       validCardTitle: false,
@@ -206,6 +221,33 @@ const board = {
       }
     },
 
+    editList: function(e) {
+      e.preventDefault();
+      let processServerResponse = (data) => {
+        if (data.success == true) {
+          this.$router.go()
+        } else {
+          alert(data)
+          this.$router.push('/login')
+        }
+      }
+      if (this.listUnderEdit) {
+        let updatedListData = {
+          'public_id': this.listUnderEdit.public_id,
+          'newTitle': this.listUnderEdit.title
+        }
+        let token = localStorage.getItem('token')
+        fetch('http://localhost:8080/updateList', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedListData)
+        }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
+      }
+    },
+
     deleteList: function(e) {
       e.preventDefault();
       let processServerResponse = (data) => {
@@ -216,8 +258,8 @@ const board = {
           this.$router.push('/login')
         }
       }
-      if (this.selectedListId) {
-        let deleteListData = {'public_id': this.selectedListId}
+      if (this.listUnderDeletion) {
+        let deleteListData = {'public_id': this.listUnderDeletion}
         let token = localStorage.getItem('token')
         fetch('http://localhost:8080/deleteList', {
           method: 'DELETE',
@@ -241,7 +283,7 @@ const board = {
         }
       }
       if (this.validCardTitle && this.validCardDeadline) {
-        let newupdatedCardData = {
+        let updatedListData = {
           'cardTitle': this.cardTitle.trim(),
           'cardContent': this.cardContent?this.cardContent.trim():"",
           'cardDeadline': this.cardDeadline,
@@ -253,31 +295,7 @@ const board = {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify(newupdatedCardData)
-        }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
-      }
-    },
-
-    deleteCard: function(e) {
-      e.preventDefault();
-      let processServerResponse = (data) => {
-        if (data.success == true) {
-          this.$router.go()
-        } else {
-          alert(data)
-          this.$router.push('/login')
-        }
-      }
-      if (this.cardUnderDeletion) {
-        let deleteupdatedCardData = {'public_id': this.cardUnderDeletion.public_id}
-        let token = localStorage.getItem('token')
-        fetch('http://localhost:8080/deleteCard', {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(deleteupdatedCardData)
+          body: JSON.stringify(updatedListData)
         }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
       }
     },
@@ -293,7 +311,7 @@ const board = {
         }
       }
       if (this.cardUnderEdit) {
-        let updatedCardData = {
+        let updatedListData = {
           'public_id': this.cardUnderEdit.public_id,
           'newTitle': this.cardUnderEdit.title,
           'newContent': this.cardUnderEdit.content,
@@ -307,7 +325,31 @@ const board = {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(updatedCardData)
+          body: JSON.stringify(updatedListData)
+        }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
+      }
+    },
+
+    deleteCard: function(e) {
+      e.preventDefault();
+      let processServerResponse = (data) => {
+        if (data.success == true) {
+          this.$router.go()
+        } else {
+          alert(data)
+          this.$router.push('/login')
+        }
+      }
+      if (this.cardUnderDeletion) {
+        let updatedListData = {'public_id': this.cardUnderDeletion.public_id}
+        let token = localStorage.getItem('token')
+        fetch('http://localhost:8080/deleteCard', {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedListData)
         }).then(res => res.json()).then(data => processServerResponse(data)).catch(error => alert(error))
       }
     },

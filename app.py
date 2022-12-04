@@ -148,6 +148,15 @@ def create_list(current_user):
     db.session.commit()
     return {'success': True}
 
+@app.route('/updateList', methods=['POST'])
+@token_required
+def update_list(curent_user):
+    data = json.loads(request.data)
+    list = List.query.filter_by(public_id=data['public_id']).first()
+    list.title = data['newTitle']
+    db.session.commit()
+    return {'success': True}
+
 @app.route('/deleteList', methods=['DELETE'])
 @token_required
 def delete_list(current_user):
@@ -184,15 +193,6 @@ def create_card(current_user):
     db.session.commit()
     return {'success': True}
 
-@app.route('/deleteCard', methods=['DELETE'])
-@token_required
-def delete_card(current_user):
-    data = json.loads(request.data)
-    card_to_delete = Card.query.filter_by(public_id=data['public_id']).first()
-    db.session.delete(card_to_delete)
-    db.session.commit()
-    return {'success': True}
-
 @app.route('/updateCard', methods=['POST'])
 @token_required
 def update_card(current_user):
@@ -202,6 +202,15 @@ def update_card(current_user):
     card_to_update.content = data['newContent']
     card_to_update.completed = data['newCompleted']
     card_to_update.list = data['newList']
+    db.session.commit()
+    return {'success': True}
+
+@app.route('/deleteCard', methods=['DELETE'])
+@token_required
+def delete_card(current_user):
+    data = json.loads(request.data)
+    card_to_delete = Card.query.filter_by(public_id=data['public_id']).first()
+    db.session.delete(card_to_delete)
     db.session.commit()
     return {'success': True}
 
