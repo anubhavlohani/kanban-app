@@ -3,14 +3,15 @@ import datetime
 import json
 import jwt
 import uuid
+import requests
+import pandas as pd
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from flask import Flask, render_template, request, make_response, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_caching import Cache
-
-from tasks import export_list_csv
+from celery import Celery
 
 
 curr_dir = os.path.abspath(os.path.dirname(__name__))
@@ -25,16 +26,27 @@ config = {
 
 app = Flask(__name__)
 app.config.from_mapping(config)
+
 cache = Cache(app)
+
 db = SQLAlchemy()
 db.init_app(app)
+
 app.app_context().push()
 with app.app_context():
     cache.clear()
 
+celery = Celery(
+    'app',
+    broker='redis://localhost',
+    backend='redis://localhost'
+)
 
 
-# ORM
+
+'''
+ORMs
+'''
 class User(db.Model):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -86,7 +98,9 @@ class Card(db.Model):
         }
 
 
-
+'''
+Token Verification Wrapper
+'''
 def token_required(func):
     @wraps(func)
     def verify_token(*args, **kwargs):
@@ -106,7 +120,36 @@ def token_required(func):
     return verify_token
     
 
+'''
+Celery Tasks
+'''
+# celery -A app.celery worker --loglevel=INFO
+@celery.task
+def export_list_csv(username, user_lists):
+    # create csv
+    df = pd.DataFrame.from_records(user_lists)
+    file_name = '{}_lists.csv'.format(username)
+    df.to_csv(file_name, index=False)
 
+    # alert user
+    msg_data = {
+        'text': f'{username} your lists have been exported!'
+    }
+    msg_data = json.dumps(msg_data)
+    headers = {'Content-Type': 'application/json; charset=UTF-8'}
+    res = requests.post(
+        url='https://chat.googleapis.com/v1/spaces/AAAAGoKRVNI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=ySLsaZytG6dmeHLhVd4oSGgT02hjVMGyi-jQ0zo8E1A%3D',
+        headers=headers,
+        data=msg_data
+    )
+    return 'DONE'
+
+
+
+
+'''
+REST Routes
+'''
 @app.route('/', methods=['GET'])
 @cache.cached(timeout=3600, key_prefix='home')
 def home():
