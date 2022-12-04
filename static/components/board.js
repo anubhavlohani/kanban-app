@@ -1,7 +1,7 @@
 const board = {
   template: `
     <div class='container'>
-      <h1 class="display-6"> Welcome {{ name }}</h1>
+      <h1 class="display-6 center"> Welcome {{ name }}</h1>
       
       <!-- Create List -->
       <h3>

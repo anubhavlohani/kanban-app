@@ -1,7 +1,7 @@
 const summary = {
   template: `
       <div class="container">      
-        <div class='center'> Welcome {{ name }}</div>
+        <h1 class="display-6 center"> Welcome {{ name }}</h1>
 
         <table class="table table-striped">
           <thead class="table-dark">
