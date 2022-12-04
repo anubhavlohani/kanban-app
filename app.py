@@ -10,6 +10,8 @@ from flask import Flask, render_template, request, make_response, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_caching import Cache
 
+from tasks import export_list_csv
+
 
 curr_dir = os.path.abspath(os.path.dirname(__name__))
 config = {
@@ -251,6 +253,16 @@ def get_summary(current_user):
         user_lists[i]['afterDeadline'] = completed_cards - completed_before_deadline
         user_lists[i]['remainingCards'] = len(list['cards']) - completed_cards
     return {'name': current_user.name, "lists": user_lists}
+
+
+@app.route('/exportLists', methods=['GET'])
+@token_required
+def export_lists(current_user):
+    available_lists = List.query.filter_by(owner=current_user.username).all()
+    user_lists = [list.serialized for list in available_lists]
+    export_list_csv.apply_async((current_user.username, user_lists))
+    return "OK", 200
+
 
 
 
