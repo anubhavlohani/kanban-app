@@ -11,7 +11,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask, render_template, request, make_response, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_caching import Cache
+
 from celery import Celery
+from celery.schedules import crontab
 
 
 curr_dir = os.path.abspath(os.path.dirname(__name__))
@@ -124,11 +126,42 @@ def token_required(func):
 Celery Tasks
 '''
 # celery -A app.celery worker --loglevel=INFO
+# celery -A app.celery beat --max-interval 1 --loglevel=INFO -s ./celery_data/celery-schedule
+
+@celery.on_after_configure.connect
+def setup_periodic_tasks(sender, **kwargs):
+    all_lists = List.query.all()
+    all_lists = [list.serialized for list in all_lists]
+    ping_users = []
+    for list in all_lists:
+        for card in list['cards']:
+            if not card['completed']:
+                ping_users.append(list['owner'])
+                break
+    sender.add_periodic_task(crontab(hour=15, minute=5), push_daily_reminders.s(ping_users), name='everyday @ 8:30PM')
+
+@celery.task
+def push_daily_reminders(users):
+    users = set(users)
+    headers = {'Content-Type': 'application/json; charset=UTF-8'}
+    webhook_url = 'https://chat.googleapis.com/v1/spaces/AAAAGoKRVNI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=ySLsaZytG6dmeHLhVd4oSGgT02hjVMGyi-jQ0zo8E1A%3D'
+    for user in users:
+        msg_data = {
+            'text': f'{user} you have pending tasks. Please update their status :)'
+        }
+        msg_data = json.dumps(msg_data)
+        res = requests.post(
+            url=webhook_url,
+            headers=headers,
+            data=msg_data
+        )
+    return 'DONE'
+
 @celery.task
 def export_list_csv(username, user_lists):
     # create csv
     df = pd.DataFrame.from_records(user_lists)
-    file_name = '{}_lists.csv'.format(username)
+    file_name = 'celery_data/{}_lists.csv'.format(username)
     df.to_csv(file_name, index=False)
 
     # alert user
