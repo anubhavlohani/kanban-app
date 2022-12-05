@@ -7,6 +7,13 @@ import requests
 import pandas as pd
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
+from jinja2 import Template
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
+from weasyprint import HTML
+
 
 from flask import Flask, render_template, request, make_response, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -14,6 +21,10 @@ from flask_caching import Cache
 
 from celery import Celery
 from celery.schedules import crontab
+
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('agg')
 
 
 curr_dir = os.path.abspath(os.path.dirname(__name__))
@@ -24,6 +35,10 @@ config = {
     "CACHE_KEY_PREFIX": "kb_cache:/",
     "CACHE_REDIS_HOST": "localhost",
     "CACHE_REDIS_PORT": 6379,
+    "SMTP_SERVER_HOST": "localhost",
+    "SMTP_SERVER_PORT": 1025,
+    "SENDER_ADDRESS": "anubhav@kanban.com",
+    "SENDER_PASSWORD": ""
 }
 
 app = Flask(__name__)
@@ -55,6 +70,7 @@ class User(db.Model):
     public_id = db.Column(db.String(50), unique=True, nullable=False)
     name = db.Column(db.String, unique=False, nullable=False)
     username = db.Column(db.String, unique=True, nullable=False)
+    email = db.Column(db.String, unique=True, nullable=False)
     password = db.Column(db.String(255), unique=False, nullable=False)
 
 class List(db.Model):
@@ -139,6 +155,10 @@ def setup_periodic_tasks(sender, **kwargs):
                 ping_users.append(list['owner'])
                 break
     sender.add_periodic_task(crontab(hour=15, minute=5), push_daily_reminders.s(ping_users), name='everyday @ 8:30PM')
+    
+    all_users = User.query.all()
+    all_users = [{"username": user.username, "email": user.email} for user in all_users]
+    sender.add_periodic_task(crontab(minute=0, hour=3, day_of_month=1), monthy_report.s(all_users), name='first day of every month @ 8:00AM')
 
 @celery.task
 def push_daily_reminders(users):
@@ -156,6 +176,95 @@ def push_daily_reminders(users):
             data=msg_data
         )
     return 'DONE'
+
+@celery.task
+def monthy_report(users):
+    for user in users:
+        pdf_path = generate_report(user["username"])
+        send_email(user["email"], pdf_path)
+        os.remove(pdf_path)
+    return 'DONE'
+
+def send_email(email, pdf_path):
+    msg = MIMEMultipart()
+    msg["From"] = app.config["SENDER_ADDRESS"]
+    msg["To"] = email
+    msg["Subject"] = "Monthly Progress Report"
+    msg.attach(MIMEText('Your monthly progress report.', 'plain'))
+
+    with open(pdf_path, 'rb') as f:
+        pdf_attachment = MIMEApplication(f.read(), _subtype='pdf')
+        pdf_attachment.add_header('Content-Disposition', 'attachment', filename=str(pdf_path))
+    msg.attach(pdf_attachment)
+
+    s = smtplib.SMTP(host=app.config["SMTP_SERVER_HOST"], port=app.config["SMTP_SERVER_PORT"])
+    s.login(app.config["SENDER_ADDRESS"], app.config["SENDER_PASSWORD"])
+    s.send_message(msg)
+    s.quit()
+    return True
+
+
+def generate_report(user):
+    user_lists = List.query.filter_by(owner=user).all()
+    user_lists = [list.serialized for list in user_lists]
+    for i, list in enumerate(user_lists):
+        completed_cards = 0
+        completed_before_deadline = 0
+        for card in list['cards']:
+            if card['completed']:
+                completed_cards += 1
+                deadline = datetime.datetime.strptime(card['deadline'], "%d/%m/%Y, %H:%M")
+                completion = datetime.datetime.strptime(card['completed'], "%d/%m/%Y, %H:%M")
+                if completion <= deadline:
+                    completed_before_deadline += 1
+        user_lists[i]['totalCards'] = len(list['cards'])
+        user_lists[i]['completedCards'] = completed_cards
+        user_lists[i]['beforeDeadline'] = completed_before_deadline
+        user_lists[i]['afterDeadline'] = completed_cards - completed_before_deadline
+        user_lists[i]['remainingCards'] = len(list['cards']) - completed_cards
+    data = {
+        'username': user,
+        "lists": user_lists
+    }
+    data['username'] = user
+    list_titles = [u_list['title'] for u_list in data['lists']]
+    bar_width = 0.25
+
+    completed_data = [u_list['completedCards'] for u_list in data['lists']]
+    pending_data = [u_list['remainingCards'] for u_list in data['lists']]
+    completed_bar = [i for i in range(len(list_titles))]
+    pending_bar = [i + bar_width for i in completed_bar]
+    plt.bar(completed_bar, completed_data, color='g', width=bar_width, label='Completed')
+    plt.bar(pending_bar, pending_data, color='r', width=bar_width, label='Remaining')
+    plt.title('Completed vs Pending Tasks')
+    plt.xlabel('List Titles')
+    plt.xticks(ticks=[i + 0.5*bar_width for i in range(len(list_titles))], labels=list_titles)
+    plt.ylabel('Number of Tasks')
+    plt.savefig('{}_pvc.png'.format(data['username']))
+
+    before_data = [u_list['beforeDeadline'] for u_list in data['lists']]
+    after_data = [u_list['afterDeadline'] for u_list in data['lists']]
+    plt.figure().clear()
+    before_bar = [i for i in range(len(list_titles))]
+    after_bar = [i + bar_width for i in completed_bar]
+    plt.bar(before_bar, before_data, color='g', width=bar_width, label='On Time')
+    plt.bar(after_bar, after_data, color='r', width=bar_width, label='After Deadline')
+    plt.title('Before vs After Deadline')
+    plt.xlabel('List Titles')
+    plt.xticks(ticks=[i + 0.5*bar_width for i in range(len(list_titles))], labels=list_titles)
+    plt.ylabel('Number of Tasks')
+    plt.savefig('{}_bva.png'.format(data['username']))
+
+    with open('templates/report.html') as f:
+        template = Template(f.read())
+        report = template.render(data=data)
+        file_name = "{}_monthly_report.pdf".format(user)
+        html = HTML(string=report, base_url=curr_dir)
+        html.write_pdf(target=file_name)
+        os.remove('{}_pvc.png'.format(data['username']))
+        os.remove('{}_bva.png'.format(data['username']))
+
+    return file_name
 
 @celery.task
 def export_list_csv(username, user_lists):
@@ -176,8 +285,6 @@ def export_list_csv(username, user_lists):
         data=msg_data
     )
     return 'DONE'
-
-
 
 
 '''
