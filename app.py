@@ -302,7 +302,7 @@ def register():
     data = json.loads(request.data)
     hashed_password = generate_password_hash(data['password'], 'sha256')
     public_id = str(uuid.uuid4())
-    new_user = User(public_id=public_id, name=data['name'], username=data['username'], password=hashed_password)
+    new_user = User(public_id=public_id, name=data['name'], username=data['username'], email=data['email'], password=hashed_password)
     db.session.add(new_user)
     db.session.commit()
     return {'success': True}

@@ -25,6 +25,16 @@ const register = {
       </div>
 
       <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input id="email" class="form-control" v-model="email" type="email" name="email">
+        <ul v-if="emailConditions.length">
+          <li v-for="condition in emailConditions" v-bind:class="condition.textType">
+            {{ condition.message }}
+          </li>
+        </ul>
+      </div>
+
+      <div class="mb-3">
         <label for="password" class="form-label">Password</label>
         <input id="password" class="form-control" v-model="password" type="password" name="password">
         <ul v-if="passwordConditions.length">
@@ -47,6 +57,7 @@ const register = {
         {message: "Cannot be empty", textType: null},
         {message: "Only alphabets and space allowed", textType: null},
       ],
+
       username: null,
       validUsername: false,
       usernameConditions: [
@@ -54,6 +65,13 @@ const register = {
         {message: "Cannot start with a number or _", textType: null},
         {message: "At least 5 characters", textType: null}
       ],
+
+      email: null,
+      validEmail: false,
+      emailConditions: [
+        {message: "Required Field", textType: null}
+      ],
+      
       password: null,
       validPassword: false,
       passwordConditions: [
@@ -75,7 +93,7 @@ const register = {
         }
       }
       if (this.validName && this.validUsername && this.validPassword) {
-        let userData = {name: this.name, username: this.username, password: this.password}
+        let userData = {name: this.name, username: this.username, email: this.email, password: this.password}
         fetch('http://localhost:8080/registerUser', {
           method: 'POST',
           headers: {
@@ -127,6 +145,15 @@ const register = {
       } else {
         this.validUsername = false
         this.usernameConditions[2].textType = 'error-condition'
+      }
+    },
+    email: function () {
+      this.validEmail = true
+      if (this.email.trim().length > 0) {
+        this.emailConditions[0].textType = 'valid-condition'
+      } else {
+        this.validEmail = false
+        this.emailConditions[0].textType = 'error-condition'
       }
     },
     password: function() {
