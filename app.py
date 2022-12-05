@@ -146,6 +146,11 @@ Celery Tasks
 
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
+    sender.add_periodic_task(crontab(hour=15, minute=0), push_daily_reminders.s(), name='everyday @ 8:30PM')
+    sender.add_periodic_task(crontab(minute=0, hour=3, day_of_month=1), monthy_report.s(), name='first day of every month @ 8:00AM')
+
+@celery.task
+def push_daily_reminders():
     all_lists = List.query.all()
     all_lists = [list.serialized for list in all_lists]
     ping_users = []
@@ -154,18 +159,10 @@ def setup_periodic_tasks(sender, **kwargs):
             if not card['completed']:
                 ping_users.append(list['owner'])
                 break
-    sender.add_periodic_task(crontab(hour=15, minute=5), push_daily_reminders.s(ping_users), name='everyday @ 8:30PM')
-    
-    all_users = User.query.all()
-    all_users = [{"username": user.username, "email": user.email} for user in all_users]
-    sender.add_periodic_task(crontab(minute=0, hour=3, day_of_month=1), monthy_report.s(all_users), name='first day of every month @ 8:00AM')
-
-@celery.task
-def push_daily_reminders(users):
-    users = set(users)
+    ping_users = set(ping_users)
     headers = {'Content-Type': 'application/json; charset=UTF-8'}
     webhook_url = 'https://chat.googleapis.com/v1/spaces/AAAAGoKRVNI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=ySLsaZytG6dmeHLhVd4oSGgT02hjVMGyi-jQ0zo8E1A%3D'
-    for user in users:
+    for user in ping_users:
         msg_data = {
             'text': f'{user} you have pending tasks. Please update their status :)'
         }
@@ -178,8 +175,10 @@ def push_daily_reminders(users):
     return 'DONE'
 
 @celery.task
-def monthy_report(users):
-    for user in users:
+def monthy_report():
+    all_users = User.query.all()
+    all_users = [{"username": user.username, "email": user.email} for user in all_users]
+    for user in all_users:
         pdf_path = generate_report(user["username"])
         send_email(user["email"], pdf_path)
         os.remove(pdf_path)
@@ -291,13 +290,13 @@ def export_list_csv(username, user_lists):
 REST Routes
 '''
 @app.route('/', methods=['GET'])
-@cache.cached(timeout=3600, key_prefix='home')
+@cache.cached(timeout=60, key_prefix='home')
 def home():
     return render_template('index.html')
 
 
 @app.route('/registerUser', methods=['POST'])
-@cache.cached(timeout=3600, key_prefix='register')
+@cache.cached(timeout=60, key_prefix='register')
 def register():
     data = json.loads(request.data)
     hashed_password = generate_password_hash(data['password'], 'sha256')
@@ -309,7 +308,6 @@ def register():
 
 
 @app.route('/login', methods=['POST'])
-@cache.cached(timeout=3600, key_prefix='login')
 def login():
     auth = request.authorization
 
